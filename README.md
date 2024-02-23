@@ -1,15 +1,15 @@
 # LayoutLM
 
-# Installation
+## Installation
 ```
 pip install -r requirements.txt
 ```
 
-# Data
+## Data
 - To prepare datafor training use `data/prepare_data.py`.
 - To merge multiple json files data use `merge_json_data.py`
 
-# Config
+## Config
 Update the Required configs for the model in `config.py`
 - `model`: LayoutLMv2/LayoutLMv3
 - `image_dir`: Path to the folder consisting of all the images
@@ -22,7 +22,12 @@ Update the Required configs for the model in `config.py`
 - `data_split`: Test Split from the data
 - `init_checkpoint`: Initial checkpoint to the huggingface model
 
-# Train
+## Train
 ```
 python train.py
+```
+
+## Infer
+```
+python infer.py -i IMAGE_INPUT -q QUESTION -m MODEL_PATH
 ```

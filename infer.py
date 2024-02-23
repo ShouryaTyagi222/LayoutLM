@@ -1,14 +1,7 @@
-from transformers import DonutProcessor, VisionEncoderDecoderModel
 import torch
-import re
-import json
 from PIL import Image
 from transformers import AutoModelForQuestionAnswering
 from transformers import LayoutLMv2Processor
-import os
-from transformers import LayoutLMv3Processor, LayoutLMv3ForQuestionAnswering
-from docx import Document
-from docx.shared import Inches
 import argparse
 
 

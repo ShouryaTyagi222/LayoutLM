@@ -20,7 +20,9 @@ Update the Required configs for the model in `config.py`
 - `batch_size`: The Batch-Size
 - `learning_rate`: Learning Rate
 - `data_split`: Test Split from the data
+- `device`: GPU Device
 - `init_checkpoint`: Initial checkpoint to the huggingface model
+- `wandb credentials..`
 
 ## Train
 ```

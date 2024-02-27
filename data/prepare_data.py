@@ -3,10 +3,18 @@ from doctr.models import ocr_predictor
 import os
 import json
 from tqdm import tqdm
+from transformers import AutoTokenizer
+
+model_checkpoint_v2 = "microsoft/layoutlmv2-base-uncased"
+model_checkpoint_v3 = "microsoft/layoutlmv3-base"
 
 # print("Libraries Loaded!!!")
-input_file='/data/circulars/DATA/LayoutLM/docvqa_dataset/raw_data/last_pages.json'
+input_file='/data/circulars/DATA/LayoutLM/docvqa_dataset/raw_data/last_pages_b2.json'
 img_dir = '/data/circulars/DATA/LayoutLM/docvqa_dataset/Images'
+output_dir='/data/circulars/DATA/LayoutLM/docvqa_dataset/processed_data_v2'
+
+image_width=224
+image_height=224
 
 print("Libraries Loaded!!!")
 
@@ -30,10 +38,14 @@ def extract_rect_label_boxes(dataset, img_width, img_height):
     for annotation in dataset["annotations"]:
         if annotation["from_name"] == "rect-label":
             # Get the bounding box coordinates
-            x = annotation["value"]["x"] * img_width / 100
-            y = annotation["value"]["y"] * img_height / 100
-            width = annotation["value"]["width"] * img_width / 100
-            height = annotation["value"]["height"] * img_height / 100
+            # x = annotation["value"]["x"] * img_width / 100
+            # y = annotation["value"]["y"] * img_height / 100
+            # width = annotation["value"]["width"] * img_width / 100
+            # height = annotation["value"]["height"] * img_height / 100
+            x = annotation["value"]["x"] * image_width / 100
+            y = annotation["value"]["y"] * image_height / 100
+            width = annotation["value"]["width"] * image_width / 100
+            height = annotation["value"]["height"] * image_height / 100
 
             rect_label_boxes.append([x, y, width, height, annotation["value"]["rectanglelabels"][0]])
 
@@ -85,7 +97,7 @@ def get_bbox_words(json_op):
             for lines in block['lines']:
                 for word in lines['words']:
                     ((xi,yi),(xj,yj))=word['geometry']
-                    result.append([xi*x/100,yi*y/100,(xj*x-xi*x)/100,(yj*y-yi*y)/100,[word['value']]])
+                    result.append([int(xi*image_width),int(yi*image_height),int((xj-xi)*image_width),int((yj-yi)*image_height),[word['value']]])
                     # print([xi*x,yi*y,xj*x-xi*x,yj*y-yi*y,[word['value']]])
                     # result['words'].append(word['value'])
     return result
@@ -134,14 +146,15 @@ l_dataset = dataset_docvqa
 dataset = []
 
 # Enumerate
-for i, file_data in enumerate(original_dataset):
-    print(f"Processing {i}th file")
+for i, file_data in tqdm(enumerate(original_dataset)):
+    # print(f"Processing {i}th file")
 
     try:
         entry_dict = {}
         file_path = file_data["data"]["ocr"].split("/")[-1]
         entry_dict["file_name"] = file_data["data"]["ocr"].split("/")[-1]
-        entry_dict["dimensions"] = [l_dataset[i]["annotations"][0]["original_width"], l_dataset[i]["annotations"][0]["original_height"]]
+        # entry_dict["dimensions"] = [l_dataset[i]["annotations"][0]["original_width"], l_dataset[i]["annotations"][0]["original_height"]]
+        entry_dict["dimensions"]=image_width,image_height
 
         # Get the OCR Boxes
         # ocr_boxes = extract_ocr_boxes(file_data, l_dataset[i]["annotations"][0]["original_width"], l_dataset[i]["annotations"][0]["original_height"])
@@ -213,15 +226,8 @@ def subfinder(words_list, answer_list, max_mismatches=30):
     else:
         return None, 0, 0
 
-from transformers import AutoTokenizer
-
-model_checkpoint = "microsoft/layoutlmv2-base-uncased"
-batch_size = 16
-
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-
-from transformers import AutoTokenizer
 set_greater = set()
+print('TOKENIZING')
 
 def process_example(dataset, doc_id, qa_id, model_checkpoint="microsoft/layoutlmv2-large-uncased"):
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
@@ -275,7 +281,7 @@ def process_example(dataset, doc_id, qa_id, model_checkpoint="microsoft/layoutlm
 # dataset = json.load(open("./dataset_lp_v2-1.json"))
 
 # Process the dataset
-processed_dataset = []
+dataset_v3 = dataset
 
 # Create a file to log errors
 error_log_file = open("error_log.txt", "w")
@@ -283,11 +289,20 @@ error_log_file = open("error_log.txt", "w")
 for doc_id in tqdm(range(0, len(dataset))):
     for qa_id in range(0, len(dataset[doc_id]["q_and_a"])):
         try:
-            start_idx, end_idx, encoding = process_example(dataset, doc_id, qa_id)
+            start_idx, end_idx, encoding = process_example(dataset, doc_id, qa_id,model_checkpoint_v2)
             # Add the start and end indices to the dataset
             dataset[doc_id]["q_and_a"][qa_id]["start_idx"] = start_idx
             dataset[doc_id]["q_and_a"][qa_id]["end_idx"] = end_idx
             dataset[doc_id]["q_and_a"][qa_id]["input_ids"] = encoding.input_ids
+        except Exception as e:
+            # Log the error to the file
+            error_log_file.write(f"Error processing Document {doc_id}, QA {qa_id}: {str(e)}\n")
+        try:
+            start_idx, end_idx, encoding = process_example(dataset_v3, doc_id, qa_id,model_checkpoint_v3)
+            # Add the start and end indices to the dataset
+            dataset_v3[doc_id]["q_and_a"][qa_id]["start_idx"] = start_idx
+            dataset_v3[doc_id]["q_and_a"][qa_id]["end_idx"] = end_idx
+            dataset_v3[doc_id]["q_and_a"][qa_id]["input_ids"] = encoding.input_ids
         except Exception as e:
             # Log the error to the file
             error_log_file.write(f"Error processing Document {doc_id}, QA {qa_id}: {str(e)}\n")
@@ -296,5 +311,7 @@ for doc_id in tqdm(range(0, len(dataset))):
 error_log_file.close()
 
 # Save the dataset
-with open(input_file.split('.')[0]+'_final.json', "w") as f:
-    json.dump(dataset, f)
+with open(os.path.join(output_dir,os.path.basename(input_file).split('.')[0]+'_final_v2.json'), "w") as f:
+    json.dump(dataset, f, indent=4)
+with open(os.path.join(output_dir,os.path.basename(input_file).split('.')[0]+'_final_v3.json'), "w") as f:
+    json.dump(dataset_v3, f, indent=4)

@@ -1,8 +1,9 @@
 import os
 import json
 
-file1='/data/circulars/DATA/LayoutLM/docvqa_dataset/full_data.json'
-file2='/data/circulars/DATA/LayoutLM/docvqa_dataset/first_pages_b2_final.json'
+file1='/data/circulars/DATA/LayoutLM/docvqa_dataset/full_data_v2.json'
+file2='/data/circulars/DATA/LayoutLM/docvqa_dataset/processed_data_v2/middle_pages_final_v2.json'
+output_file='/data/circulars/DATA/LayoutLM/docvqa_dataset/full_data_v2.json'
 
 dataset1 = json.load(open(file1))
 dataset2 = json.load(open(file2))
@@ -14,5 +15,5 @@ dataset1.extend(dataset2)
 
 print('output file length :',len(dataset1))
 
-with open(os.path.join(os.path.dirname(file1),"full_data.json"), "w") as f:
+with open(output_file, "w") as f:
     json.dump(dataset1, f, indent=4)

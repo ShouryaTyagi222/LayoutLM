@@ -6,7 +6,6 @@ import torch
 from torch.utils.data.dataloader import default_collate
 
 
-
 def convert_to_custom_format(original_dataset,image_dir,banned_files):
     custom_dataset = []
 
@@ -20,6 +19,7 @@ def convert_to_custom_format(original_dataset,image_dir,banned_files):
         image = cv2.imread(f'/data/circulars/DATA/LayoutLM/docvqa_dataset/Images/{file_name}')
         image=cv2.resize(image,(224,224))
 
+        # Skip if the file is in the banned files
         # Skip if the file is in the banned files
         if file_name in banned_files:
             continue
@@ -36,13 +36,8 @@ def convert_to_custom_format(original_dataset,image_dir,banned_files):
 
                 # Fill in your data processing logic here to populate input_ids, bbox, attention_mask, token_type_ids, and image
                 input_ids = np.array(qa_pair.get("input_ids", -1))
-                # print('length of the input ids before :',len(input_ids))
-                pad=512-len(input_ids)
-                if pad>0:
-                    input_ids=np.hstack([input_ids,np.zeros(pad,)])
                 # Just take the first 512 tokens
                 input_ids = input_ids[:512]
-                # print('length of the input ids after :',len(input_ids))
 
                 # Fill in your data processing logic here to populate input_ids, bbox, attention_mask, token_type_ids, and image
 
@@ -64,8 +59,6 @@ def convert_to_custom_format(original_dataset,image_dir,banned_files):
                     'start_positions': start_positions,
                     'end_positions': end_positions,
                 }
-                # print(custom_example)
-                # print('data item :',count)
 
                 custom_dataset.append(custom_example)
                 count += 1
@@ -83,7 +76,6 @@ def convert_to_custom_format(original_dataset,image_dir,banned_files):
     }
 
     return custom_dataset
-
 
 def custom_collate(batch):
     elem_type = type(batch[0])
